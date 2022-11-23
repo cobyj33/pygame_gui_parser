@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pygamegui>
+
+<pygamegui> 
+    <head>
+        <themes>
+            <theme>styles.json</theme>
+        </themes>
+    </head>
+
+    <body>
+        <button rect="100 400 150 100">Play</button>
+        <button rect="300 400 150 100">Options</button>
+        <button rect="500 400 150 100">Quit</button>
+    </body>
+</pygamegui>
