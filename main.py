@@ -11,7 +11,7 @@ pygame.display.set_caption("Pygame GUI Markup Testing")
 clock = pygame.time.Clock()
 RUNNING = True
 
-# manager = pygame_gui.UIManager(DEFAULT_GAME_SIZE)
+manager = pygame_gui.UIManager(DEFAULT_GAME_SIZE)
 # window = pygame_gui.core.UIContainer(pygame.Rect((0, 0), DEFAULT_GAME_SIZE), manager)
 # hello_button = pygame_gui.elements.UIButton(pygame.Rect(0, 0, 200, 100), "Hello World", manager, window, "Click Me", anchors={"center": "center"}, allow_double_clicks=True)
 

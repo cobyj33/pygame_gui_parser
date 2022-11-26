@@ -8,9 +8,18 @@
         </themes>
     </head>
 
-    <body>
-        <button rect="100 400 150 100">Play</button>
-        <button rect="300 400 150 100">Options</button>
-        <button rect="500 400 150 100">Quit</button>
+    <body res="800 600">
+        <panel rect="0 0 800 600">
+            <panel rect="20 20 760 200">
+                <label rect="20 20 700 160">Main Menu</label>
+            </panel>
+
+            <panel rect="20 -220 760 200" anchors="bottom">
+                <button rect="100 0 150 100" anchors="centery">Play</button>
+                <button rect="300 0 150 100" anchors="centery">Options</button>
+                <button rect="500 0 150 100" anchors="centery">Quit</button>
+            </panel>
+        </panel>
+
     </body>
 </pygamegui>
