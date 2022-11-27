@@ -1,20 +1,29 @@
 import sys
 import os
 import bs4
-from typing import Any, Callable, TypedDict, Iterable
+from typing import Any, Callable, TypedDict, Iterable, TypeVar, Generic, Union
 import pygame
 import pygame_gui
+import xml.xmlast
+
+
 from collections import deque
 
 ParsingFunction = Callable[[bs4.Tag, pygame_gui.UIManager, pygame_gui.core.UIElement | None, pygame_gui.core.IContainerLikeInterface | None], pygame_gui.core.UIElement]
 confirmation = ["true", "yes", "y", "enable", "enabled", "t"]
 rejection = ["false", "f", "no", "n", "disabled", "disable"]
-
 validAnchors = ["left", "right", "top", "bottom", "center", "centerx", "centery"]
+validTags = ["body", "image", "pygamegui", "button", "dropdownmenu", "horizontalslider", "window", "statusbar", "selectionlist", "worldspacehealthbar", "screenspacehealthbar", "image", "label", "panel", "textbox", "container", "textentryline", "textentrybox", "tooltip", "messagewindow", "consolewindow", "confirmationdialog", "colorpickerdialog", "filedialog"]
+
+# VALID XML TYPES: string, int, bool, float
+# VALID XML AGGREGATE TYPES: list[string], list[int], list[bool], list[float]
+
+
+T = TypeVar("T")
 
 def is_num(string: str) -> bool:
     try:
-        num = float(string)
+        float(string)
         return True
     except ValueError:
         return False
@@ -55,13 +64,6 @@ def get_num_attr(tag: bs4.Tag, attrname: str, default: float | int) -> float | i
     return default
 
 
-# def get_int_attr(tag: bs4.Tag, attrname: str, default: int) -> int:
-#     res = default
-
-#     if attrname in tag.attrs:
-#         if tag[attrname].isnumeric():
-#             return int(tag[attrname])
-
 def get_str_attr(tag: bs4.Tag, attrname: str, default: str, accepted: Iterable[str] = []) -> str:
     res = default
     
@@ -71,9 +73,6 @@ def get_str_attr(tag: bs4.Tag, attrname: str, default: str, accepted: Iterable[s
         elif tag[attrname] in accepted:
                 res = tag[attrname]
     return res
-
-# def get_key_value_pairs(tag: bs4.Tag, attrname: str) -> dict[str, str | int | float | bool]:
-
 
 def get_str_list(tag, attrname: str) -> list[str]:
     if attrname in tag.attrs:
@@ -260,7 +259,6 @@ def parse_tooltip(tag: bs4.Tag, info: ParsingInfo) -> pygame_gui.elements.UITool
 #         return pygame_gui.elements.UIButton(relative_rect=rect)
 #     raise ValueError(f'Could not parse button, invalid tag name ${tag}')
 
-validTags = ["body", "image", "pygamegui", "button", "dropdownmenu", "horizontalslider", "window", "statusbar", "selectionlist", "worldspacehealthbar", "screenspacehealthbar", "image", "label", "panel", "textbox", "container", "textentryline", "textentrybox", "tooltip", "messagewindow", "consolewindow", "confirmationdialog", "colorpickerdialog", "filedialog"]
 parsingFunctions: dict[str, ParsingFunction] = {
     "button": parse_button,
     "pygamegui": parse_pygamegui,
@@ -279,6 +277,8 @@ parsingFunctions: dict[str, ParsingFunction] = {
     "tooltip": parse_tooltip
 }
 
+# def parse_xml_node(node: XMLNode) -> pygame_gui.core.UIElement:
+#     rect = 
 
 
 def parse_tag(tag: bs4.Tag, info: ParsingInfo):
@@ -303,47 +303,62 @@ def parse_tag(tag: bs4.Tag, info: ParsingInfo):
     else:
         print(f'Could not parse tag {tag.name}, seen as invalid')
 
+def parse_xml(source: str, *themes: str, use_themes_in_file: bool = True) -> pygame_gui.UIManager:
+    manager = pygame_gui.UIManager(pygame.display.get_window_size())
+    for theme in themes:
+        manager.get_theme().load_theme(theme)
 
-class GUI():
-    def __init__(self, source: str, *themes: str, use_themes_in_file: bool = True):
-        self.manager = pygame_gui.UIManager(pygame.display.get_window_size())
-        for theme in themes:
-            self.manager.get_theme().load_theme(theme)
+    with open(source, "r") as f:
+        content = "".join(f.readlines());
+        xml = bs4.BeautifulSoup(content, "lxml-xml")
 
-        
-        with open(source, "r") as f:
-            content = "".join(f.readlines());
-            xml = bs4.BeautifulSoup(content, "lxml-xml")
-            if use_themes_in_file:
-                themesTag = xml.find("themes")
-                if not themesTag == None:
-                    themes = [theme.string for theme in xml.find_all("theme")]
-                    themes = [ theme.strip() for theme in themes ]
-                    for theme in themes:
-                        abspath = str(os.path.abspath(theme))
-                        print("Loading Theme", abspath)
-                        self.manager.get_theme().load_theme(abspath)
-                
-            parent = pygame_gui.core.UIContainer(relative_rect=pygame.Rect((0, 0), self.manager.window_resolution), manager=self.manager)
-            startingInfo: ParsingInfo = {
-                "manager": self.manager,
-                "parent_element": parent,
-                "container": None
-            }
-
-
-
-            parse_tag(xml.body, startingInfo)
+        if use_themes_in_file:
+            themesTag = xml.find("themes")
+            if not themesTag == None:
+                themes = [theme.string for theme in xml.find_all("theme")]
+                themes = [ theme.strip() for theme in themes ]
+                for theme in themes:
+                    abspath = str(os.path.abspath(theme))
+                    print("Loading Theme", abspath)
+                    manager.get_theme().load_theme(abspath)
             
+        parent = pygame_gui.core.UIContainer(relative_rect=pygame.Rect((0, 0), manager.window_resolution), manager=manager)
+        startingInfo: ParsingInfo = {
+            "manager": manager,
+            "parent_element": parent,
+            "container": None
+        }
 
-    def process_events(self, event: pygame.event.Event):
-        if event.type == pygame.VIDEORESIZE:
-            self.manager.set_window_resolution(pygame.display.get_window_size())
+        parse_tag(xml.body, startingInfo)
+    return manager
 
-        self.manager.process_events(event)
-    
-    def update(self, dt: float):
-        self.manager.update(dt)
+# def parse_xml_tree(tree: XMLNode) -> pygame_gui.UIManager:
+#     manager = pygame_gui.UIManager(pygame.display.get_window_size())
+#     queue: deque[XMLNode] = deque(tree)
 
-    def draw_ui(self, target: pygame.surface.Surface):
-        self.manager.draw_ui(target)
+#     for theme in themes:
+#         manager.get_theme().load_theme(theme)
+
+#     with open(source, "r") as f:
+#         content = "".join(f.readlines());
+#         xml = bs4.BeautifulSoup(content, "lxml-xml")
+
+#         if use_themes_in_file:
+#             themesTag = xml.find("themes")
+#             if not themesTag == None:
+#                 themes = [theme.string for theme in xml.find_all("theme")]
+#                 themes = [ theme.strip() for theme in themes ]
+#                 for theme in themes:
+#                     abspath = str(os.path.abspath(theme))
+#                     print("Loading Theme", abspath)
+#                     manager.get_theme().load_theme(abspath)
+            
+#         parent = pygame_gui.core.UIContainer(relative_rect=pygame.Rect((0, 0), manager.window_resolution), manager=manager)
+#         startingInfo: ParsingInfo = {
+#             "manager": manager,
+#             "parent_element": parent,
+#             "container": None
+#         }
+
+#         parse_tag(xml.body, startingInfo)
+#     return manager

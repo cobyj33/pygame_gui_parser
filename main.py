@@ -1,6 +1,6 @@
 import pygame
 import pygame_gui
-import pygameguiparser
+import xml.gui
 
 pygame.init()
 DEFAULT_GAME_WIDTH = 800
@@ -23,7 +23,7 @@ background.fill("White")
 DELTA_TIME = 0
 FRAMERATE = 60
 
-gui = pygameguiparser.GUI("mainmenu.xml")
+gui = xml.gui.GUI("mainmenu.xml")
 
 while RUNNING:
     for event in pygame.event.get():

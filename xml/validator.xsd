@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+
+
+<!-- Unfinished, but will be used in conjunction with the python to validate strings -->
+<!-- My main delay is wondering whether to support adding custom components, which should be a yes, but the API should be flushed out more before then -->
+
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+    <xs:complexType name="standardElement">
+    </xs:complexType>
+
+    <xs:complexType name="body">
+
+    </xs:complexType>
+
+
+
+    <xs:element name="pygamegui">
+        <xs:complexType>
+            <xs:sequence>
+
+
+                <xs:element name="head">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="themes">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="theme" maxOccurs="unbounded" type="xs:string" />
+                                    </xs:sequence>
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+
+
+                    </xs:complexType>
+                </xs:element>
+
+
+
+            
+                <xs:element name="body">
+                    <xs:complexType>
+                        <xs:sequence>
+
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+
+
+
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>
