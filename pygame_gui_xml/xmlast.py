@@ -1,9 +1,8 @@
 import bs4
 from typing import Generic, TypeVar, Union, Callable, Iterable, Any, TypedDict
 from collections import deque
+from pygame_gui_xml.xmlconstants import *
 
-confirmation = ["true", "yes", "y", "enable", "enabled", "t"]
-rejection = ["false", "f", "no", "n", "disabled", "disable"]
 
 T = TypeVar("T")
 
@@ -13,6 +12,9 @@ def is_num(string: str) -> bool:
         return True
     except ValueError:
         return False
+
+def is_bool_attr(data: str) -> bool:
+    return data in rejection or data in confirmation
 
 def is_int_str(string: str) -> bool:
     return is_num(string) and all([ char.isdigit() or char == "-" for char in string ])
@@ -25,24 +27,20 @@ def get_num_tuple_attr(tag: bs4.Tag, attrname: str, length: int, default: tuple[
             return tuple(numerics)
     return default
 
-def get_bool_attr(tag: bs4.Tag, attrname: str, default: bool) -> bool:
-    res = default
-    
-    if attrname in tag.attrs:
-        if default == True:
-            res = tag[attrname].lower() in rejection
-        elif default == False:
-            res = tag[attrname].lower() in confirmation
-    return res
+def get_bool_attr(data: str) -> bool:
+    if data.lower() in rejection:
+        return False
+    elif data.lower() in confirmation:
+        return True
+    raise ValueError(f'Data {data} could not be casted to a boolean while fetching attribute')
 
-def get_num_attr(tag: bs4.Tag, attrname: str, default: float | int) -> float | int:
-    if attrname in tag.attrs:
-        if is_num(tag[attrname]):
-            if is_int_str(tag[attrname]):
-                return int(tag[attrname])
-            else:
-                return float(tag[attrname])
-    return default
+def get_num_attr(data: str) -> float | int:
+    if is_num(data):
+        if is_int_str(data):
+            return int(data)
+        else:
+            return float(data)
+    raise ValueError(f'Could not get num from {data}')
 
 
 def get_str_attr(tag: bs4.Tag, attrname: str, default: str, accepted: Iterable[str] = []) -> str:
@@ -85,17 +83,55 @@ class XMLNode():
         self.parent = parent
         self.children = children
 
+    def find(self, name: str) -> Union["XMLNode", None]:
+        for child in self.children:
+            if child.name == name:
+                return child
+        for child in self.children:
+            result = child.find(name)
+            if not result is None:
+                return result
+        return None
+
+    def find_all(self, name: str) -> Iterable["XMLNode"]:
+        found: list["XMLNode"] = [child for child in self.children if child.name == name]
+        for child in self.children:
+            found.extend(child.find_all(name))
+        return found
+
+    def find_all_with_attrs(self, attrs: Iterable[str]) -> Iterable["XMLNode"]:
+        found: list["XMLNode"] = [child for child in self.children if all([attr in child.attrs for attr in attrs])]
+        for child in self.children:
+            found.extend(child.find_all_with_attrs(attrs))
+        return found
+
+
     def __str__(self) -> str:
-        return f'XMLNode {self.name}: {{ attrs: {self.attrs}, text: {self.text}, parent: {self.parent.name if not self.parent == None else "None"}, children: {[ child.name for child in self.children ]}    }}'
+        return f'XMLNode {self.name}: {{ attrs: {self.attrs}, text: {self.text}, parent: {self.parent.name if not self.parent is None else "None"}, children: {[ child.name for child in self.children ]}    }}'
 
 class XMLAttributeParserSchema(Generic[T]):
-    def __init__(self, name: str, required: bool, default: T | None, parserfunc: Callable[[str], T], validator: Callable[[str], bool]):
+    def __init__(self, name: str, required: bool, parserfunc: Callable[[str], T], validator: Callable[[str], bool]):
         self.name = name
         self.type = T
         self.required = required
-        self.default = default
         self.parserfunc = parserfunc
         self.validator = validator
+
+class XMLBoolAttributeParserSchema(XMLAttributeParserSchema[bool]):
+    def __init__(self, name: str, required: bool):
+        super().__init__(name, required, get_bool_attr, is_bool_attr)
+
+class XMLStringAttributeParserSchema(XMLAttributeParserSchema[str]):
+    def __init__(self, name: str, required: bool):
+        super().__init__(name, required, lambda data: data, lambda _: True)
+
+class XMLIntAttributeParserSchema(XMLAttributeParserSchema[int]):
+    def __init__(self, name: str, required: bool):
+        super().__init__(name, required, lambda integer: get_num_attr(integer), is_int_str)
+
+class XMLFloatAttributeParserSchema(XMLAttributeParserSchema[float]):
+    def __init__(self, name: str, required: bool):
+        super().__init__(name, required, lambda num: get_num_attr(num), is_num)
 
 
 class XMLTagParserSchema():
@@ -106,10 +142,6 @@ class XMLTagParserSchema():
 
     def validate(self, tag: bs4.Tag):
         return all([ child.name in self.acceptedChildren for child in tag.children if isinstance(child, bs4.Tag) ]) and all([ attribute in self.attrSchema for attribute in tag.attrs.keys() ]) and all([ self.attrSchema[attribute].validator(tag[attribute]) for attribute in tag.attrs.keys() ])
-
-# XMLAttributeParserSchema[tuple[int, int, int, int]]("rect", True, None, get_tag_rect)
-# XMLAttributeParserSchema[int]()
-# XMLTagParserSchema("panel", )
 
 
 class XMLParser():
@@ -132,7 +164,8 @@ class XMLParser():
                             raise ValueError(f'XML Parser Error: Could not validate attribute {attr} in schema for tag {get_tag_details(current)}')
                     else:
                         raise ValueError(f'XML Parser Error: Could not find attribute {attr} in schema for tag {get_tag_details(current)} ')
-                node = XMLNode(current.name, nodeAttrs, current.text, parent, [])
+                text = "" if str(current.string) is None else str(current.string)
+                node = XMLNode(current.name, nodeAttrs, text, parent, [])
                 node.children = [ self.get_ast_node(child, node) for child in current.children if isinstance(child, bs4.Tag) ]
                 return node
             else:
@@ -146,31 +179,21 @@ class XMLParser():
 
 vec4 = tuple[int, int, int, int]
 
-def validate_rect(data: str) -> bool:
-    print("Validate Rect Data: ", data)
-    return all([ is_num(string) for string in data.split(" ") ]) and len(data.split(" ")) == 4
-
-def get_tag_rect(data: str) -> vec4:
-    splitted = data.split(" ")
-    if all([ is_num(splitstring) for splitstring in splitted]):
-        rect = [float(data) for data in splitted]
-        datapoints = len(rect)
-        if datapoints == 4:
-            return tuple(rect)
-    raise ValueError(f'Could not parse rect data {data}')
-
-
-if __name__ == "__main__":
-    xml = bs4.BeautifulSoup("<panel rect='0 0 100 100'> <name>Jacoby</name> </panel>", "lxml-xml")
-    print(xml)
-    rect = XMLAttributeParserSchema[vec4]("rect", True, None, get_tag_rect, validate_rect)
-    panel = XMLTagParserSchema("panel", [rect], ["name"])
-    name = XMLTagParserSchema("name", [], [])
-    parser = XMLParser([panel, name])
-    head = parser.get_ast(xml)
-    
+def print_xml_node_tree(head: XMLNode):
     queue: deque[XMLNode] = deque([head])
     while len(queue) > 0:
         node = queue.pop()
         print(node)
         queue.extend(node.children)
+
+
+if __name__ == "__main__":
+    xml = bs4.BeautifulSoup("<panel id='3'> <name>Jacoby</name> </panel>", "lxml-xml")
+    print(xml)
+    id = XMLIntAttributeParserSchema("id", True)
+    panel = XMLTagParserSchema("panel", [id], ["name"])
+    name = XMLTagParserSchema("name", [], [])
+    parser = XMLParser([panel, name])
+    head = parser.get_ast(xml)
+    
+    print_xml_node_tree(head)

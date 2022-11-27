@@ -1,6 +1,7 @@
+import sys
 import pygame
 import pygame_gui
-import xml.gui
+import pygame_gui_xml.gui
 
 pygame.init()
 DEFAULT_GAME_WIDTH = 800
@@ -23,7 +24,12 @@ background.fill("White")
 DELTA_TIME = 0
 FRAMERATE = 60
 
-gui = xml.gui.GUI("mainmenu.xml")
+args = sys.argv
+target = "mainmenu.xml"
+if len(args) > 1:
+    target = args[1]
+print(target)
+gui = pygame_gui_xml.gui.GUI(target)
 
 while RUNNING:
     for event in pygame.event.get():
@@ -32,20 +38,11 @@ while RUNNING:
         if event.type == pygame.WINDOWRESIZED:
             background = pygame.surface.Surface(pygame.display.get_window_size()).convert_alpha()
             background.fill("White")
-        # if event.type == pygame_gui.UI_BUTTON_PRESSED:
-        #     if event.ui_element == hello_button:
-        #         print("Hello World")
-        # if event.type == pygame_gui.UI_BUTTON_DOUBLE_CLICKED:
-        #     if event.ui_element == hello_button:
-        #         print("Hello World X2")
-        # manager.process_events(event)
         gui.process_events(event)
     
     # manager.update(DELTA_TIME)
     gui.update(DELTA_TIME)
-
     screen.blit(background, (0, 0))
-    # manager.draw_ui(screen)
     gui.draw_ui(screen)
 
     pygame.display.update()

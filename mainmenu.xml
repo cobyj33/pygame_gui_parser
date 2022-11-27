@@ -8,18 +8,23 @@
         </themes>
     </head>
 
-    <body res="800 600">
+    <body>
         <panel rect="0 0 800 600" id="background">
             <panel rect="20 20 760 200" id="top-bar">
                 <label rect="20 20 700 160">Main Menu</label>
             </panel>
 
+            <panel rect="20 200 760 200" id="middle-bar">
+                <label rect="20 20 700 160">I am the man</label>
+            </panel>
+
             <panel rect="20 -220 760 200" anchors="bottom" id="bottom-bar">
-                <button rect="100 0 150 100" anchors="centery">Play</button>
-                <button rect="300 0 150 100" anchors="centery">Options</button>
-                <button rect="500 0 150 100" anchors="centery">Quit</button>
+                <button rect="100 0 150 100" anchors="centery" id="play-button" tooltip="Start New Game">Play</button>
+                <button rect="300 0 150 100" anchors="centery" id="options-button">Options</button>
+                <button rect="500 0 150 100" anchors="centery" id="quit-button">Quit</button>
             </panel>
         </panel>
-
     </body>
+
+
 </pygamegui>
