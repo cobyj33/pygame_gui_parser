@@ -7,7 +7,7 @@ Welcome to the depths of the docs
 
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 4
 
     internals/ast
     internals/parser

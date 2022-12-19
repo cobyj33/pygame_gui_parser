@@ -14,9 +14,9 @@ def is_int_str(string: str) -> bool:
 
 def get_num_tuple_attr(tag: bs4.Tag, attrname: str, length: int, default: tuple[int | float, ...]) -> tuple[int | float, ...]:
     if attrname in tag.attrs:
-        values = [ string for string in tag[attrname].split(" ") if len(string) > 0 ]
+        values = [ string.strip() for string in tag[attrname].split(" ") if len(string) > 0 ]
         if all([ is_num_str(value) for value in values ]):
-            numerics = [ int(value) if is_int_str(value) else float(value) for value in values ]
+            numerics = [ get_num_attr(value) for value in values ]
             return tuple(numerics)
     return default
 
@@ -97,6 +97,14 @@ class XMLNode():
             found.extend(child.find_all_with_attrs(attrs))
         return found
 
+    def __getitem__(self, attrname):
+        return self.attrs[attrname]
+
+    def __setitem__(self, attrname, value):
+        self.attrs[attrname] = value
+
+    def __contains__(self, attrname):
+        return attrname in self.attrs
 
     def __str__(self) -> str:
         return f'XMLNode {self.name}: {{ attrs: {self.attrs}, text: {self.text}, parent: {self.parent.name if not self.parent is None else "None"}, children: {[ child.name for child in self.children ]}    }}'
@@ -119,17 +127,17 @@ class XMLStringAttributeParserSchema(XMLAttributeParserSchema[str]):
 
 class XMLIntAttributeParserSchema(XMLAttributeParserSchema[int]):
     def __init__(self, name: str, required: bool):
-        super().__init__(name, required, lambda integer: get_num_attr(integer), is_int_str)
+        super().__init__(name, required, get_num_attr, is_int_str)
 
 class XMLFloatAttributeParserSchema(XMLAttributeParserSchema[float]):
     def __init__(self, name: str, required: bool):
-        super().__init__(name, required, lambda num: get_num_attr(num), is_num_str)
+        super().__init__(name, required, get_num_attr, is_num_str)
 
 
 class XMLTagParserSchema():
     def __init__(self, name: str, attrSchema: Iterable[XMLAttributeParserSchema], acceptedChildren: Iterable[str]):
         self.name = name
-        self.attrSchema = dict([ ( schema.name, schema ) for schema in attrSchema ])
+        self.attrSchema: dict[str, XMLAttributeParserSchema] = { schema.name: schema  for schema in attrSchema }
         self.acceptedChildren = set(acceptedChildren)
 
     def validate(self, tag: bs4.Tag):

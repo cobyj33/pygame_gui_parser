@@ -61,11 +61,21 @@ def get_anchors(data: str) -> dict[str, str]:
     positioning = [ selection.strip() for selection in data.split(" ") ]
     positioning = [ position for position in positioning if is_valid_anchor(position) ]
     print(positioning)
-    anchors: dict[str, str] = dict()
+    anchors: dict[str, str] = {}
     for position in positioning:
         anchors[position] = position
     return anchors
-    return {}
+
+def get_class_id(data: str) -> bool:
+    if not data[0] == "@":
+        return "@" + data
+    return data
+
+def get_object_id(data: str) -> bool:
+    if not data[0] == "#":
+        return "#" + data
+    return data
+
 
 rect = xmlast.XMLAttributeParserSchema[vec4]("rect", True, get_tag_rect, validate_rect)
 anchors = xmlast.XMLAttributeParserSchema[dict[str, str]]("anchors", False, get_anchors, validate_anchors)
@@ -81,8 +91,8 @@ click_increment = xmlast.XMLIntAttributeParserSchema("click-increment", False)
 placeholder = xmlast.XMLStringAttributeParserSchema("placeholder", False)
 initial = xmlast.XMLStringAttributeParserSchema("initial", False)
 hover_distance = xmlast.XMLAttributeParserSchema[tuple[int, int]]("hover-distance", False, get_hover_distance, validate_hover_distance)
-id_attr = xmlast.XMLStringAttributeParserSchema("id", False)
-class_attr = xmlast.XMLStringAttributeParserSchema("class", False)
+id_attr = xmlast.XMLAttributeParserSchema("id", False, get_object_id, lambda _: True)
+class_attr = xmlast.XMLAttributeParserSchema("class", False, get_class_id, lambda _: True)
 tooltip_attr = xmlast.XMLStringAttributeParserSchema("tooltip", False);
 
 pygamegui = xmlast.XMLTagParserSchema("pygamegui", [], get_valid_tags())

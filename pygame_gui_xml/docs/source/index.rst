@@ -21,7 +21,8 @@ pygame_gui_xml is a python package made for ease of use of the pygame_gui user i
 
    quickstart
    structure
-   elements/index
+   examples/index
+   tags/index
    advanced/index
    dev/index
    contributing

@@ -5,6 +5,7 @@ from typing import TypedDict, Iterable, Callable, TypeVar, Generic
 import pygame_gui_xml.ast
 import pygame_gui_xml.parser
 from pygame_gui_xml._config import is_valid_tag
+import warnings
 
 T = TypeVar("T")
 class ParsingInfo(TypedDict):
@@ -242,6 +243,19 @@ def parse_xml_tree(manager: pygame_gui.UIManager, node: pygame_gui_xml.ast.XMLNo
 class GUIState(Generic[T]):
     def __init__(self, value: T):
         self._value = value
+        self._subscribed: dict[str, Callable[[T], None]] = {}
+
+    def subscribe(self, _id: str, callback: Callable[[T], None]):
+        if _id in self._subscribed:
+            warnings.warn("Attempting to subscribe a new callback which has already been subscribed to")
+        self._subscribed[_id] = callback
+
+    def unsubscribe(self, _id: str):
+        del self._subscribed[_id] 
+
+    def _fire(self):
+        for callback in self._subscribed.values():
+            callback(self._value)
     
     def set(self, value: T):
         self._value = value
