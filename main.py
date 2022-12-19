@@ -1,6 +1,9 @@
 import sys
+import os
 import pygame
 import pygame_gui
+sys.path.append(os.path.join(  os.path.abspath("./"), "pygame_gui_xml/" ))
+
 import pygame_gui_xml.gui
 
 pygame.init()
@@ -25,7 +28,7 @@ DELTA_TIME = 0
 FRAMERATE = 60
 
 args = sys.argv
-target = "mainmenu.xml"
+target = "pygame_gui_xml/tests/data/mainmenu.xml"
 if len(args) > 1:
     target = args[1]
 print(target)

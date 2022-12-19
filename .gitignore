@@ -3,3 +3,7 @@ tags
 tags.*
 test.py
 trash.py
+.venv
+build
+oldparser.py.txt
+.vscode

@@ -1,41 +1,33 @@
 import bs4
 from typing import Generic, TypeVar, Union, Callable, Iterable, Any, TypedDict
 from collections import deque
-from pygame_gui_xml.xmlconstants import *
+from pygame_gui_xml._util import is_bool_string, is_num_str, parse_bool_string
 
 
 T = TypeVar("T")
 
-def is_num(string: str) -> bool:
-    try:
-        float(string)
-        return True
-    except ValueError:
-        return False
-
 def is_bool_attr(data: str) -> bool:
-    return data in rejection or data in confirmation
+    return is_bool_string(data)
 
 def is_int_str(string: str) -> bool:
-    return is_num(string) and all([ char.isdigit() or char == "-" for char in string ])
+    return is_num_str(string) and all([ char.isdigit() or char == "-" for char in string ])
 
 def get_num_tuple_attr(tag: bs4.Tag, attrname: str, length: int, default: tuple[int | float, ...]) -> tuple[int | float, ...]:
     if attrname in tag.attrs:
         values = [ string for string in tag[attrname].split(" ") if len(string) > 0 ]
-        if all([ is_num(value) for value in values ]):
+        if all([ is_num_str(value) for value in values ]):
             numerics = [ int(value) if is_int_str(value) else float(value) for value in values ]
             return tuple(numerics)
     return default
 
 def get_bool_attr(data: str) -> bool:
-    if data.lower() in rejection:
-        return False
-    elif data.lower() in confirmation:
-        return True
-    raise ValueError(f'Data {data} could not be casted to a boolean while fetching attribute')
+    try:
+        return parse_bool_string(data)
+    except ValueError:
+        raise ValueError(f'Data {data} could not be casted to a boolean while fetching attribute')
 
 def get_num_attr(data: str) -> float | int:
-    if is_num(data):
+    if is_num_str(data):
         if is_int_str(data):
             return int(data)
         else:
@@ -131,7 +123,7 @@ class XMLIntAttributeParserSchema(XMLAttributeParserSchema[int]):
 
 class XMLFloatAttributeParserSchema(XMLAttributeParserSchema[float]):
     def __init__(self, name: str, required: bool):
-        super().__init__(name, required, lambda num: get_num_attr(num), is_num)
+        super().__init__(name, required, lambda num: get_num_attr(num), is_num_str)
 
 
 class XMLTagParserSchema():
@@ -145,6 +137,7 @@ class XMLTagParserSchema():
 
 
 class XMLParser():
+    """Parses XML"""
     def __init__(self, tagSchemas: Iterable[XMLTagParserSchema]):
         self.tagSchemas = dict([ (tagSchema.name, tagSchema) for tagSchema in tagSchemas ])
         if not "[document]" in self.tagSchemas:

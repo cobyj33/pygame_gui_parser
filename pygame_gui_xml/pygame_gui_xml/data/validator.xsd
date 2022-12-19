@@ -13,8 +13,6 @@
 
     </xs:complexType>
 
-
-
     <xs:element name="pygamegui">
         <xs:complexType>
             <xs:sequence>

@@ -1,19 +1,20 @@
 import os
 import pygame
 import pygame_gui
-from typing import TypedDict, Iterable, Callable
-import pygame_gui_xml.xmlast as xmlast
-import pygame_gui_xml.xmlparser as xmlparser
-from pygame_gui_xml.xmlconstants import *
+from typing import TypedDict, Iterable, Callable, TypeVar, Generic
+import pygame_gui_xml.ast
+import pygame_gui_xml.parser
+from pygame_gui_xml._config import is_valid_tag
 
+T = TypeVar("T")
 class ParsingInfo(TypedDict):
     manager: pygame_gui.UIManager
     parent_element: pygame_gui.core.UIElement
     container: pygame_gui.core.IContainerLikeInterface
 
-ParsingFunction = Callable[[xmlast.XMLNode, ParsingInfo], pygame_gui.core.UIElement]
+ParsingFunction = Callable[[pygame_gui_xml.ast.XMLNode, ParsingInfo], pygame_gui.core.UIElement]
 
-def get_object_id(node: xmlast.XMLNode):
+def get_object_id(node: pygame_gui_xml.ast.XMLNode):
     object_id: str = node.attrs.get("id")
     class_id: str = node.attrs.get("class")
     if not object_id is None:
@@ -24,7 +25,7 @@ def get_object_id(node: xmlast.XMLNode):
             class_id = "@" + object_id
     return pygame_gui.core.ObjectID(object_id or "", class_id or "")
 
-def parse_button(node: xmlast.XMLNode, info: ParsingInfo)  -> pygame_gui.elements.UIButton:
+def parse_button(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo)  -> pygame_gui.elements.UIButton:
     if node.name == "button":
         rect = pygame.Rect(node.attrs["rect"])
         anchors = node.attrs.get("anchors") or {}
@@ -33,13 +34,13 @@ def parse_button(node: xmlast.XMLNode, info: ParsingInfo)  -> pygame_gui.element
         return pygame_gui.elements.UIButton(relative_rect=rect, anchors=anchors, **info, text=node.text, object_id=objectid, tool_tip_text=tooltip)
     raise ValueError(f'Could not parse button, invalid node name {node}')
 
-def parse_pygamegui(node: xmlast.XMLNode, info: ParsingInfo)  -> pygame_gui.core.UIContainer:
+def parse_pygamegui(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo)  -> pygame_gui.core.UIContainer:
     if node.name == "pygamegui":
         rect = pygame.Rect((0, 0), info["manager"].window_resolution)
         return pygame_gui.core.UIContainer(relative_rect=rect, **info)
     raise ValueError(f'Could not parse pygamegui, invalid node name {node}')
 
-def parse_image(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UIImage:
+def parse_image(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UIImage:
     if node.name == "image":
         rect = pygame.Rect(node.attrs["rect"])
         anchors = node.attrs.get("anchors") or {}
@@ -52,13 +53,13 @@ def parse_image(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.
         return pygame_gui.elements.UIImage(relative_rect=rect, image_surface=surface, **info, anchors=anchors, object_id=objectid)
     raise ValueError(f'Could not parse image, invalid node name {node}')
 
-def parse_body(node: xmlast.XMLNode, info: ParsingInfo)  -> pygame_gui.core.UIContainer:
+def parse_body(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo)  -> pygame_gui.core.UIContainer:
     if node.name == "body":
         rect = node.attrs.get("rect") or pygame.Rect((0, 0), info["manager"].window_resolution)
         return pygame_gui.core.UIContainer(relative_rect=rect, **info, anchors={})
     raise ValueError(f'Could not parse body, invalid node name {node}')
 
-def parse_window(node: xmlast.XMLNode, info: ParsingInfo)  -> pygame_gui.elements.UIWindow:
+def parse_window(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo)  -> pygame_gui.elements.UIWindow:
     if node.name == "window":
         rect = pygame.Rect(node.attrs["rect"])
         title = node.attrs.get("title") or "Unnamed Window"
@@ -67,7 +68,7 @@ def parse_window(node: xmlast.XMLNode, info: ParsingInfo)  -> pygame_gui.element
         return pygame_gui.elements.UIWindow(rect=rect, manager=info["manager"], window_display_title=title, resizable=resizable, object_id=objectid)
     raise ValueError(f'Could not parse button, invalid node name {node}')
 
-def parse_panel(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UIPanel:
+def parse_panel(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UIPanel:
     if node.name == "panel":
         rect = pygame.Rect(node.attrs["rect"])
         objectid = get_object_id(node)
@@ -75,7 +76,7 @@ def parse_panel(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.
         return pygame_gui.elements.UIPanel(rect, 1, **info, anchors=anchors, object_id=objectid)
     raise ValueError(f'Could not parse button, invalid node name {node}')
 
-def parse_label(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UILabel:
+def parse_label(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UILabel:
     if node.name == "label":
         rect = pygame.Rect(node.attrs["rect"])
         objectid = get_object_id(node)
@@ -83,7 +84,7 @@ def parse_label(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.
         return pygame_gui.elements.UILabel(rect, text=node.text, **info, anchors=anchors, object_id=objectid)
     raise ValueError(f'Could not parse label, invalid node name {node}')
 
-def parse_textbox(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UITextBox:
+def parse_textbox(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UITextBox:
     if node.name == "textbox":
         rect = pygame.Rect(node.attrs["rect"])
         anchors = node.attrs.get("anchors") or {}
@@ -91,7 +92,7 @@ def parse_textbox(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.element
         return pygame_gui.elements.UITextBox(node.text, rect, **info, anchors=anchors, object_id=objectid)
     raise ValueError(f'Could not parse textbox, invalid node name {node}')
 
-def parse_statusbar(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UIStatusBar:
+def parse_statusbar(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UIStatusBar:
     if node.name == "statusbar":
         rect = pygame.Rect(node.attrs["rect"])
         anchors = node.attrs.get("anchors") or {}
@@ -99,7 +100,7 @@ def parse_statusbar(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.eleme
         return pygame_gui.elements.UIStatusBar(rect, **info, anchors=anchors, object_id=objectid)
     raise ValueError(f'Could not parse statusbar, invalid node name {node}')
 
-def parse_selectionlist(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UISelectionList:
+def parse_selectionlist(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UISelectionList:
     if node.name == "selectionlist":
         rect = pygame.Rect(node.attrs["rect"])
         anchors = node.attrs.get("anchors") or {}
@@ -111,7 +112,7 @@ def parse_selectionlist(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.e
         return pygame_gui.elements.UISelectionList(rect, item_list=[item.text for item in items],  **info, anchors=anchors, allow_multi_select=multiselect, default_selection=selected, object_id=objectid)
     raise ValueError(f'Could not parse selectionlist, invalid node name {node}')
 
-def parse_horizontalslider(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UIHorizontalSlider:
+def parse_horizontalslider(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UIHorizontalSlider:
     if node.name == "horizontalslider":
         rect = pygame.Rect(node.attrs["rect"])
         anchors = node.attrs.get("anchors") or {}
@@ -123,7 +124,7 @@ def parse_horizontalslider(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gu
         return pygame_gui.elements.UIHorizontalSlider(rect, start_value=start_value, value_range=range_value, **info, anchors=anchors, click_increment=click_increment, object_id=objectid)
     raise ValueError(f'Could not parse horizontalslider, invalid node name {node}')
 
-def parse_dropdownmenu(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UIDropDownMenu:
+def parse_dropdownmenu(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UIDropDownMenu:
     if node.name == "dropdown" or node.name == "dropdownmenu":
         rect = pygame.Rect(node.attrs["rect"])
         anchors = node.attrs.get("anchors") or {}
@@ -135,7 +136,7 @@ def parse_dropdownmenu(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.el
         return pygame_gui.elements.UIDropDownMenu([ option.text for option in options ], starting_option, rect, **info, anchors=anchors, object_id=objectid)
     raise ValueError(f'Could not parse dropdown, invalid node name {node}')
 
-def parse_textentryline(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UITextEntryLine:
+def parse_textentryline(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UITextEntryLine:
     if node.name == "textentryline":
         rect = pygame.Rect(node.attrs["rect"])
         anchors = node.attrs.get("anchors") or {}
@@ -145,7 +146,7 @@ def parse_textentryline(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.e
         return pygame_gui.elements.UITextEntryLine(rect, **info, anchors=anchors, placeholder_text=placeholder, initial_text=initial, object_id=objectid)
     raise ValueError(f'Could not parse textentryline, invalid node name {node}')
 
-def parse_textentrybox(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UITextEntryBox:
+def parse_textentrybox(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UITextEntryBox:
     if node.name == "textentrybox":
         rect = pygame.Rect(node.attrs["rect"])
         anchors = node.attrs.get("anchors") or {}
@@ -154,7 +155,7 @@ def parse_textentrybox(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.el
         return pygame_gui.elements.UITextEntryBox(rect, **info, anchors=anchors, initial_text=initial, object_id=objectid)
     raise ValueError(f'Could not parse textentrybox, invalid node name {node}')
 
-def parse_tooltip(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UITooltip:
+def parse_tooltip(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo) -> pygame_gui.elements.UITooltip:
     if node.name == "tooltip":
         anchors = node.attrs.get("anchors") or {}
         objectid = get_object_id(node)
@@ -185,9 +186,9 @@ pygame_gui.core.ObjectID()
 # def parse_xml_node(node: xmlast.XMLNode, info: ParsingInfo) -> pygame_gui.core.UIElement:
     # objectid = get_object_id(node)
 
-def parse_node(node: xmlast.XMLNode, info: ParsingInfo):
+def parse_node(node: pygame_gui_xml.ast.XMLNode, info: ParsingInfo):
     # print("Current Tag: ", tag)
-    if node.name in validTags:
+    if is_valid_tag(node.name):
         if node.name in parsingFunctions:
             pygameGUIElement = parsingFunctions[node.name](node, info)
             # print(pygameGUIElement, isinstance(pygameGUIElement, pygame_gui.core.IContainerLikeInterface))
@@ -206,7 +207,7 @@ def parse_node(node: xmlast.XMLNode, info: ParsingInfo):
         print(f'Could not parse node {node}, seen as invalid')
 
 
-def parse_xml_tree(manager: pygame_gui.UIManager, node: xmlast.XMLNode, themes: Iterable[str], use_themes_in_file: bool = True):
+def parse_xml_tree(manager: pygame_gui.UIManager, node: pygame_gui_xml.ast.XMLNode, themes: Iterable[str], use_themes_in_file: bool = True):
     info: ParsingInfo = {
         "manager": manager,
         "parent_element": None,
@@ -214,11 +215,18 @@ def parse_xml_tree(manager: pygame_gui.UIManager, node: xmlast.XMLNode, themes: 
     }
 
     if use_themes_in_file:
-            themesNode = node.find("themes")
-            if not themesNode is None:
-                themes = [theme.text.strip() for theme in themesNode.find_all("theme")]
-                for theme in themes:
-                    abspath = str(os.path.abspath(theme))
+        for theme in themes:
+            abspath = str(os.path.abspath(theme))
+            print("Loading Theme", abspath)
+            manager.get_theme().load_theme(abspath)
+
+        themesNode = node.find("themes")
+        if not themesNode is None:
+            importedThemes = [theme.text.strip() for theme in themesNode.find_all("theme")]
+            print(node)
+            if "path" in node.attrs:
+                for theme in importedThemes:
+                    abspath = str(os.path.join(os.path.abspath( os.path.dirname(node.attrs["path"]) ), theme ))
                     print("Loading Theme", abspath)
                     manager.get_theme().load_theme(abspath)
 
@@ -230,16 +238,26 @@ def parse_xml_tree(manager: pygame_gui.UIManager, node: xmlast.XMLNode, themes: 
     parse_node(top, info)
     
 
+
+class GUIState(Generic[T]):
+    def __init__(self, value: T):
+        self._value = value
+    
+    def set(self, value: T):
+        self._value = value
+
+    def get(self) -> T:
+        return self._value
+
 class GUI():
     def __init__(self, source: str, *themes: str, use_themes_in_file: bool = True):
         self.source = source
         self.themes = themes
         self.use_themes_in_file = use_themes_in_file
         self.manager = pygame_gui.UIManager(pygame.display.get_window_size())
-        self.nodetree: xmlast.XMLNode = xmlparser.parse_pygame_xml(source)
+        self.nodetree: pygame_gui_xml.ast.XMLNode = pygame_gui_xml.parser.parse_pygame_xml(source)
         parse_xml_tree(self.manager, self.nodetree, self.themes, self.use_themes_in_file)
 
-        
     def construct(self):
         self.manager.clear_and_reset()
         self.manager.set_window_resolution(pygame.display.get_window_size())
@@ -249,7 +267,6 @@ class GUI():
         if event.type == pygame.VIDEORESIZE:
             lastSize = self.manager.window_resolution
             scale = ( event.size[0] / lastSize[0], event.size[1] / lastSize[1] )
-            print(event)
             nodesWithRect = self.nodetree.find_all_with_attrs(["rect"])
             for node in nodesWithRect:
                 rect = node.attrs["rect"]

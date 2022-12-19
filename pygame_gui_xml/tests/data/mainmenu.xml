@@ -15,7 +15,7 @@
             </panel>
 
             <panel rect="20 200 760 200" id="middle-bar">
-                <label rect="20 20 700 160">I am the man</label>
+                <label rect="20 20 700 160">Enter the Game</label>
             </panel>
 
             <panel rect="20 -220 760 200" anchors="bottom" id="bottom-bar">

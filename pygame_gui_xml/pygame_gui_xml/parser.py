@@ -3,13 +3,16 @@ import bs4
 from typing import Any, Callable, TypedDict, Iterable, TypeVar, Generic, Union
 import pygame
 import pygame_gui
-import pygame_gui_xml.xmlast as xmlast
-from pygame_gui_xml.xmlconstants import *
+import pygame_gui_xml.ast as xmlast
+from pygame_gui_xml._util import is_num_str
 from collections import deque
+from pygame_gui_xml._config import is_valid_anchor, get_valid_tags, get_element_tags
+
+
 
 def validate_range(data: str) -> bool:
     split = [ string for string in data.split(" ") if len(string) > 0 ]
-    if len(split) == 2 and all([ xmlast.is_num(string) for string in split ]):
+    if len(split) == 2 and all([ is_num_str(string) for string in split ]):
         numericals = tuple([ float(string) for string in split ])
         return numericals[0] < numericals[1]
     return False
@@ -17,7 +20,7 @@ def validate_range(data: str) -> bool:
 def get_range(data: str) -> tuple[float, float]:
     split = [ string for string in data.split(" ") if len(string) > 0 ]
     if len(split) == 2:
-        if all([ xmlast.is_num(string) for string in split ]):
+        if all([ is_num_str(string) for string in split ]):
             numericals = tuple([ float(string) for string in split ])
             if numericals[0] < numericals[1]:
                 return numericals
@@ -39,11 +42,11 @@ def get_hover_distance(data: str) -> tuple[int, int]:
 
 vec4 = tuple[int, int, int, int]
 def validate_rect(data: str) -> bool:
-    return all([ xmlast.is_num(string) for string in data.split(" ") ]) and len(data.split(" ")) == 4
+    return all([ is_num_str(string) for string in data.split(" ") ]) and len(data.split(" ")) == 4
 
 def get_tag_rect(data: str) -> vec4:
     splitted = data.split(" ")
-    if all([ xmlast.is_num(splitstring) for splitstring in splitted]):
+    if all([ is_num_str(splitstring) for splitstring in splitted]):
         rect = [float(data) for data in splitted]
         datapoints = len(rect)
         if datapoints == 4:
@@ -52,11 +55,11 @@ def get_tag_rect(data: str) -> vec4:
 
 
 def validate_anchors(data: str) -> bool:
-    return all([ anchor in validAnchors for anchor in data.split(" ") ])
+    return all([ is_valid_anchor(anchor) for anchor in data.split(" ") ])
 
 def get_anchors(data: str) -> dict[str, str]:
     positioning = [ selection.strip() for selection in data.split(" ") ]
-    positioning = [ position for position in positioning if position in validAnchors ]
+    positioning = [ position for position in positioning if is_valid_anchor(position) ]
     print(positioning)
     anchors: dict[str, str] = dict()
     for position in positioning:
@@ -82,18 +85,19 @@ id_attr = xmlast.XMLStringAttributeParserSchema("id", False)
 class_attr = xmlast.XMLStringAttributeParserSchema("class", False)
 tooltip_attr = xmlast.XMLStringAttributeParserSchema("tooltip", False);
 
-pygamegui = xmlast.XMLTagParserSchema("pygamegui", [], validTags)
+pygamegui = xmlast.XMLTagParserSchema("pygamegui", [], get_valid_tags())
 
 
 head = xmlast.XMLTagParserSchema("head", [], ["themes"])
 themes = xmlast.XMLTagParserSchema("themes", [], ["theme"])
 theme = xmlast.XMLTagParserSchema("theme", [], [])
 
-body = xmlast.XMLTagParserSchema("body", [rect], elementTags)
+body = xmlast.XMLTagParserSchema("body", [rect], get_element_tags())
+window = xmlast.XMLTagParserSchema("window", [rect, title, id_attr, class_attr, resizable], get_element_tags())
+panel = xmlast.XMLTagParserSchema("panel", [rect, anchors, id_attr, class_attr], get_element_tags())
+
 button = xmlast.XMLTagParserSchema("button", [rect, anchors, id_attr, class_attr, tooltip_attr], [])
 image = xmlast.XMLTagParserSchema("image", [src, rect, anchors, id_attr, class_attr], [])
-window = xmlast.XMLTagParserSchema("window", [rect, title, id_attr, class_attr, resizable], elementTags)
-panel = xmlast.XMLTagParserSchema("panel", [rect, anchors, id_attr, class_attr], elementTags)
 label = xmlast.XMLTagParserSchema("label", [rect, anchors, id_attr, class_attr], [])
 textbox = xmlast.XMLTagParserSchema("textbox", [rect, anchors, id_attr, class_attr], [])
 statusbar = xmlast.XMLTagParserSchema("statusbar", [rect, anchors, id_attr, class_attr], [])
@@ -116,14 +120,8 @@ def parse_pygame_xml(file: str) -> xmlast.XMLNode:
         doc = bs4.BeautifulSoup(f, "lxml-xml")
         parser = xmlast.XMLParser(schemas)
         node = parser.get_ast(doc)
+        node.attrs["path"] = file
+        print(node.attrs)
         return node
     raise ValueError(f'Could not open file {file}')        
 
-
-if __name__ == "__main__":
-    node = parse_pygame_xml("mainmenu.xml")
-    queue: deque[xmlast.XMLNode] = deque([node])
-    while len(queue) > 0:
-        node = queue.pop()
-        print(node)
-        queue.extend(node.children)
