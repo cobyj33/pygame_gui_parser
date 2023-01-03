@@ -1,6 +1,6 @@
 import pygame
 import pygame_gui
-import pygame_gui_xml.ast as xmlast
+import pygame_gui_xml.xmlast as xmlast
 from typing import Callable
 import warnings
 

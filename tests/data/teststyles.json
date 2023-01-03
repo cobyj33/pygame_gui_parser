@@ -24,13 +24,5 @@
             "filled_bar":"#f4251b",
             "unfilled_bar":"#CCCCCC"
         }
-    },
-    "button":
-    {
-        "images": {
-            "normal_image": {
-                "path": "/home/cobyj33/Programming/Python/Pygame/PygameGUI/markup/Camera.png"
-            }
-        }
     }
 }

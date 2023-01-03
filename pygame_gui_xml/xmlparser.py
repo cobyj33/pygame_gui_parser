@@ -1,11 +1,7 @@
 import os
 import bs4
-from typing import Any, Callable, TypedDict, Iterable, TypeVar, Generic, Union
-import pygame
-import pygame_gui
-import pygame_gui_xml.ast as xmlast
+import pygame_gui_xml.xmlast as xmlast
 from pygame_gui_xml._util import is_num_str
-from collections import deque
 from pygame_gui_xml._config import is_valid_anchor, get_valid_tags, get_element_tags
 
 

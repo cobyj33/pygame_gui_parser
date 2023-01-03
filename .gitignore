@@ -1,9 +1,12 @@
 __pycache__
 tags
 tags.*
+main.py
 test.py
 trash.py
 .venv
 build
 oldparser.py.txt
 .vscode
+ignore/
+ignore/*

@@ -17,7 +17,7 @@
         <window rect="400 100 300 300" resizable="true" title="GUI Testing">
             <button id="play-button" rect="0 0 100 100">Play</button>
             <button id="pause-button" rect="200 0 100 100">Pause</button>
-            <image rect="200 100 100 100" src="Camera.png"></image>
+            <image rect="200 100 100 100" src="tests/data/Camera.png"></image>
         </window>
     </body>
 </pygamegui>
